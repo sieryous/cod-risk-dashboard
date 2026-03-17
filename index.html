@@ -1,369 +1,782 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>COD Risk Score — Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COD Risk Score — Ops</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #09090f; color: #e0e0e0; font-family: 'Instrument Sans', -apple-system, sans-serif; min-height: 100vh; }
-    .mono { font-family: 'DM Mono', monospace; }
-    
-    .header { border-bottom: 1px solid #1a1a2e; background: linear-gradient(180deg, #0f0f1a 0%, #09090f 100%); padding: 20px 32px; }
-    .header-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-    .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #22C55E; box-shadow: 0 0 8px rgba(34,197,94,0.5); display: inline-block; margin-right: 8px; }
-    .live-label { font-family: 'DM Mono', monospace; font-size: 11px; color: #555; letter-spacing: 2px; }
-    
-    .container { max-width: 1200px; margin: 0 auto; padding: 24px 32px; }
-    
-    .stats-row { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
-    .stat-card { padding: 20px 24px; border-radius: 12px; border: 1px solid #1a1a2e; background: #0d0d1a; flex: 1; min-width: 160px; }
-    .stat-label { font-size: 11px; color: #555; font-family: 'DM Mono', monospace; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
-    .stat-value { font-size: 28px; font-weight: 700; font-family: 'DM Mono', monospace; line-height: 1; }
-    .stat-sub { font-size: 12px; color: #555; margin-top: 6px; }
-    
-    .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 24px; }
-    .chart-card { padding: 20px; border-radius: 12px; border: 1px solid #1a1a2e; background: #0d0d1a; }
-    .chart-title { font-size: 11px; color: #555; font-family: 'DM Mono', monospace; letter-spacing: 1.5px; margin-bottom: 16px; }
-    
-    .tabs { display: flex; gap: 0; border-bottom: 1px solid #1a1a2e; }
-    .tab { padding: 12px 24px; background: none; border: none; color: #555; cursor: pointer; font-size: 13px; font-weight: 500; font-family: 'Instrument Sans', sans-serif; border-bottom: 2px solid transparent; }
-    .tab.active { color: #fff; border-bottom-color: #22C55E; }
-    
-    .table-wrap { border: 1px solid #1a1a2e; border-top: none; border-radius: 0 0 12px 12px; background: #0d0d1a; max-height: 500px; overflow-y: auto; }
-    .table-header { display: grid; padding: 10px 16px; gap: 12px; border-bottom: 1px solid #1a1a2e; position: sticky; top: 0; background: #0d0d1a; z-index: 1; }
-    .table-header span { font-size: 10px; color: #444; font-family: 'DM Mono', monospace; letter-spacing: 1.5px; text-transform: uppercase; }
-    .order-grid { grid-template-columns: 44px 1fr 100px 80px 120px 90px; }
-    .hash-grid { grid-template-columns: 1fr 100px 100px 100px 140px; }
-    
-    .order-row { display: grid; grid-template-columns: 44px 1fr 100px 80px 120px 90px; align-items: center; padding: 12px 16px; gap: 12px; border-bottom: 1px solid #141425; cursor: pointer; transition: background 0.15s; }
-    .order-row:hover { background: #0a0a1a; }
-    .order-row.selected { background: #12122a; }
-    
-    .hash-row { display: grid; grid-template-columns: 1fr 100px 100px 100px 140px; padding: 12px 16px; gap: 12px; border-bottom: 1px solid #141425; }
-    
-    .bucket-badge { padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace; letter-spacing: 0.5px; display: inline-block; }
-    .status-badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; display: inline-block; }
-    
-    .btn { padding: 8px 16px; border-radius: 8px; border: 1px solid #2a2a3e; background: #0d0d1a; color: #999; cursor: pointer; font-size: 12px; font-family: 'DM Mono', monospace; transition: all 0.2s; }
-    .btn:hover { border-color: #444; color: #fff; }
-    
-    .panel-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
-    .panel { position: fixed; top: 0; right: 0; width: 420px; height: 100vh; background: #0d0d1a; border-left: 1px solid #1a1a2e; overflow-y: auto; z-index: 100; padding: 28px; animation: slideIn 0.25s ease; }
-    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-    
-    .cat-bar-bg { height: 4px; border-radius: 2px; background: #1a1a2e; }
-    .cat-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
-    
-    .rule-row { display: flex; justify-content: space-between; padding: 8px 12px; border-radius: 6px; margin-bottom: 4px; }
-    
-    .data-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #141425; }
-    
-    .empty { padding: 40px; text-align: center; color: #555; font-size: 13px; }
-    
-    .pie-legend { display: flex; justify-content: center; gap: 12px; margin-top: 8px; }
-    .pie-legend-item { display: flex; align-items: center; gap: 4px; }
-    .pie-legend-dot { width: 6px; height: 6px; border-radius: 50%; }
-    .pie-legend-label { font-size: 10px; color: #555; font-family: 'DM Mono', monospace; }
-    
-    @media (max-width: 768px) {
-      .charts-row { grid-template-columns: 1fr; }
-      .order-grid, .order-row { grid-template-columns: 40px 1fr 80px 60px 90px; }
-      .order-row > :nth-child(6) { display: none; }
-      .table-header.order-grid > :nth-child(6) { display: none; }
-      .panel { width: 100%; }
+    :root {
+      --bg:    #0a0a0a;
+      --s1:    #0f0f0f;
+      --s2:    #141414;
+      --b1:    #1e1e1e;
+      --b2:    #2a2a2a;
+      --tx:    #e2e2e2;
+      --td:    #888;
+      --tm:    #555;
+      --tf:    #333;
+      --low:   #22c55e;
+      --med:   #f59e0b;
+      --hi:    #f97316;
+      --crit:  #ef4444;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      background: var(--bg);
+      color: var(--tx);
+      font-family: 'Fira Sans', system-ui, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .mono { font-family: 'Fira Code', monospace; }
+
+    /* ── Header ── */
+    #hdr {
+      position: sticky; top: 0; z-index: 50;
+      background: var(--bg);
+      border-bottom: 1px solid var(--b1);
+      height: 48px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--low); box-shadow: 0 0 7px var(--low);
+      flex-shrink: 0;
+    }
+    .brand-name {
+      font-family: 'Fira Code', monospace;
+      font-size: 13px; font-weight: 700; letter-spacing: 1px; color: var(--tx);
+    }
+    .brand-name em { color: var(--low); font-style: normal; }
+    .brand-sep { color: var(--b2); font-size: 20px; line-height: 1; }
+    .brand-sub {
+      font-size: 10px; letter-spacing: 2.5px; color: var(--tm); text-transform: uppercase;
+    }
+    .hdr-r { display: flex; align-items: center; gap: 16px; }
+    .updated { font-family: 'Fira Code', monospace; font-size: 11px; color: var(--tf); }
+    .btn-ref {
+      font-family: 'Fira Code', monospace; font-size: 11px; letter-spacing: 1px;
+      color: var(--td); background: none; border: 1px solid var(--b2);
+      padding: 5px 14px; cursor: pointer; transition: color .15s, border-color .15s;
+    }
+    .btn-ref:hover { color: var(--tx); border-color: var(--td); }
+    .btn-ref:disabled { opacity: .35; cursor: default; }
+
+    /* ── Nav ── */
+    #nav {
+      border-bottom: 1px solid var(--b1);
+      padding: 0 28px; display: flex;
+    }
+    .ntab {
+      font-family: 'Fira Code', monospace; font-size: 11px; letter-spacing: 1.5px;
+      color: var(--tm); background: none; border: none;
+      border-bottom: 2px solid transparent;
+      padding: 11px 20px; cursor: pointer; transition: color .15s, border-color .15s;
+    }
+    .ntab:hover { color: var(--td); }
+    .ntab.on { color: var(--tx); border-bottom-color: var(--low); }
+
+    /* ── Loader bar ── */
+    #ldr { height: 2px; background: var(--low); display: none;
+      box-shadow: 0 0 8px var(--low); }
+
+    /* ── Main ── */
+    main { max-width: 1440px; margin: 0 auto; padding: 24px 28px; }
+
+    /* ── Stats grid ── */
+    .stats {
+      display: grid; grid-template-columns: repeat(6, 1fr);
+      gap: 1px; background: var(--b1);
+      border: 1px solid var(--b1); margin-bottom: 24px;
+    }
+    .sc {
+      background: var(--s1); padding: 18px 20px;
+    }
+    .sc-lbl {
+      font-family: 'Fira Code', monospace; font-size: 10px;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--tm); margin-bottom: 10px;
+    }
+    .sc-val {
+      font-family: 'Fira Code', monospace; font-size: 32px;
+      font-weight: 700; line-height: 1; color: var(--tx);
+    }
+    .sc-sub { font-size: 11px; color: var(--tf); margin-top: 6px; }
+
+    /* ── Charts ── */
+    .charts {
+      display: grid; grid-template-columns: 3fr 2fr;
+      gap: 1px; background: var(--b1);
+      border: 1px solid var(--b1); margin-bottom: 24px;
+    }
+    .cc { background: var(--s1); padding: 20px 24px; }
+    .cc-lbl {
+      font-family: 'Fira Code', monospace; font-size: 10px;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--tm); margin-bottom: 16px;
+    }
+    .cw { position: relative; height: 190px; }
+    .donut-wrap {
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .donut-cw { position: relative; width: 168px; height: 168px; }
+    .donut-center {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .donut-n {
+      font-family: 'Fira Code', monospace; font-size: 30px;
+      font-weight: 700; line-height: 1; color: var(--tx);
+    }
+    .donut-sub { font-size: 10px; color: var(--tm); letter-spacing: 1px; margin-top: 3px; }
+    .donut-leg {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px 20px; margin-top: 16px; width: 100%;
+    }
+    .dl-item { display: flex; align-items: center; gap: 8px; }
+    .dl-dot { width: 8px; height: 8px; flex-shrink: 0; }
+    .dl-name { font-size: 11px; color: var(--td); }
+    .dl-cnt {
+      font-family: 'Fira Code', monospace; font-size: 11px;
+      color: var(--tx); margin-left: auto;
+    }
+
+    /* ── Table shared ── */
+    .tbl-wrap { border: 1px solid var(--b1); }
+    .thead {
+      display: grid; background: var(--s2);
+      border-bottom: 1px solid var(--b1);
+    }
+    .th {
+      font-family: 'Fira Code', monospace; font-size: 10px;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--tf); padding: 10px 16px;
+      user-select: none;
+    }
+    .th.sort { cursor: pointer; transition: color .15s; }
+    .th.sort:hover { color: var(--td); }
+    .th.on { color: var(--tx); }
+
+    /* ── Orders table ── */
+    .orders-cols { grid-template-columns: 76px 108px 1fr 130px 140px 100px; }
+    .orow {
+      display: grid; grid-template-columns: 76px 108px 1fr 130px 140px 100px;
+      gap: 0; align-items: center; border-bottom: 1px solid var(--b1);
+      cursor: pointer; transition: background .1s;
+    }
+    .orow:last-child { border-bottom: none; }
+    .orow:hover { background: var(--s2); }
+    .orow.sel { background: #1a1a1a; }
+    .td { padding: 12px 16px; }
+
+    /* The star: large score number */
+    .score-n {
+      font-family: 'Fira Code', monospace;
+      font-size: 38px; font-weight: 700; line-height: 1;
+      padding: 8px 12px 8px 16px; text-align: right;
+    }
+
+    .rbadge {
+      font-family: 'Fira Code', monospace; font-size: 10px;
+      font-weight: 600; letter-spacing: .5px;
+      padding: 3px 9px; display: inline-block;
+    }
+    .sbadge {
+      font-family: 'Fira Code', monospace; font-size: 10px;
+      padding: 3px 9px; display: inline-block;
+    }
+    .oid { font-size: 13px; color: var(--tx); margin-bottom: 3px; }
+    .otime { font-family: 'Fira Code', monospace; font-size: 11px; color: var(--tf); }
+    .oval { font-family: 'Fira Code', monospace; font-size: 13px; color: var(--td); }
+
+    /* ── Pagination ── */
+    .pager {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 16px; border-top: 1px solid var(--b1);
+      background: var(--s1);
+    }
+    .pi { font-family: 'Fira Code', monospace; font-size: 11px; color: var(--tm); }
+    .pbtns { display: flex; gap: 4px; }
+    .pbtn {
+      font-family: 'Fira Code', monospace; font-size: 11px;
+      background: none; border: 1px solid var(--b2);
+      color: var(--td); padding: 4px 12px; cursor: pointer;
+      transition: all .15s;
+    }
+    .pbtn:hover:not(:disabled) { color: var(--tx); border-color: var(--td); }
+    .pbtn:disabled { opacity: .3; cursor: default; }
+
+    /* ── Panel ── */
+    #ov {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65); z-index: 90;
+    }
+    #panel {
+      position: fixed; top: 0; right: 0;
+      width: 480px; height: 100vh;
+      background: var(--s1); border-left: 1px solid var(--b2);
+      overflow-y: auto; z-index: 91;
+      transform: translateX(100%);
+      transition: transform .22s ease;
+    }
+    #panel.open { transform: translateX(0); }
+    .pi-wrap { padding: 24px; }
+    .ph {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 22px;
+    }
+    .pid {
+      font-family: 'Fira Code', monospace;
+      font-size: 12px; color: var(--tm); letter-spacing: 1px;
+    }
+    .pclose {
+      font-family: 'Fira Code', monospace; font-size: 13px;
+      background: none; border: 1px solid var(--b2);
+      color: var(--td); width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0; transition: all .15s;
+    }
+    .pclose:hover { color: var(--tx); border-color: var(--td); }
+
+    /* Score hero in panel */
+    .shero { padding: 20px; margin-bottom: 22px; border: 1px solid; }
+    .shero-n {
+      font-family: 'Fira Code', monospace;
+      font-size: 68px; font-weight: 700; line-height: 1;
+    }
+    .shero-bkt {
+      font-family: 'Fira Code', monospace;
+      font-size: 11px; letter-spacing: 2px; margin-top: 6px; opacity: .7;
+    }
+    .shero-act {
+      font-size: 13px; line-height: 1.55; margin-top: 14px;
+      padding-top: 14px; border-top: 1px solid; color: var(--td);
+    }
+
+    /* Panel sections */
+    .psec { margin-bottom: 22px; }
+    .psec-t {
+      font-family: 'Fira Code', monospace; font-size: 10px;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--tf); margin-bottom: 12px;
+    }
+
+    /* Rule tags */
+    .rtags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .rtag {
+      font-family: 'Fira Code', monospace; font-size: 11px;
+      padding: 4px 10px; border: 1px solid;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .rtag-pts { font-weight: 700; }
+
+    /* Data grid in panel */
+    .dgrid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0; border: 1px solid var(--b1);
+    }
+    .di {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--b1);
+      border-right: 1px solid var(--b1);
+    }
+    .di:nth-child(even) { border-right: none; }
+    .di-lbl {
+      font-size: 10px; color: var(--tm);
+      letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px;
+    }
+    .di-val {
+      font-family: 'Fira Code', monospace; font-size: 12px; color: var(--tx);
+    }
+
+    /* ── Network table ── */
+    .net-cols { grid-template-columns: 1fr 70px 80px 80px 80px 130px; }
+    .nrow {
+      display: grid; grid-template-columns: 1fr 70px 80px 80px 80px 130px;
+      border-bottom: 1px solid var(--b1); align-items: center;
+    }
+    .nrow:last-child { border-bottom: none; }
+
+    /* ── Empty / Loading ── */
+    .empty {
+      padding: 52px 24px; text-align: center;
+      font-family: 'Fira Code', monospace;
+      font-size: 12px; color: var(--tf); letter-spacing: 1.5px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 1100px) {
+      .stats { grid-template-columns: repeat(3, 1fr); }
+      .charts { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .orders-cols,
+      .orow { grid-template-columns: 66px 96px 1fr 90px; }
+      .orow > .td:nth-child(5),
+      .orow > .td:nth-child(6),
+      .thead .th:nth-child(5),
+      .thead .th:nth-child(6) { display: none; }
+      #panel { width: 100%; }
+      .score-n { font-size: 28px; }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-inner">
-    <div>
-      <div style="margin-bottom: 4px;">
-        <span class="live-dot"></span>
-        <span class="live-label">LIVE DASHBOARD</span>
+<header id="hdr">
+  <div class="brand">
+    <div class="live-dot"></div>
+    <span class="brand-name">COD<em> RISK</em></span>
+    <span class="brand-sep">·</span>
+    <span class="brand-sub">Fraud Ops Center</span>
+  </div>
+  <div class="hdr-r">
+    <span class="updated" id="upd">—</span>
+    <button class="btn-ref" id="refBtn" onclick="loadAll()">↺ REFRESH</button>
+  </div>
+</header>
+
+<nav id="nav">
+  <button class="ntab on" id="nt-dash"    onclick="tab('dash')">DASHBOARD</button>
+  <button class="ntab"    id="nt-orders"  onclick="tab('orders')">COMENZI</button>
+  <button class="ntab"    id="nt-network" onclick="tab('network')">RETEA</button>
+</nav>
+
+<div id="ldr"></div>
+
+<main>
+  <!-- DASHBOARD -->
+  <div id="v-dash">
+    <div class="stats" id="statsGrid"></div>
+    <div class="charts">
+      <div class="cc">
+        <div class="cc-lbl">TREND SCOR MEDIU — ULTIMELE 7 ZILE</div>
+        <div class="cw"><canvas id="lc"></canvas></div>
       </div>
-      <h1>COD Risk Score</h1>
+      <div class="cc donut-wrap">
+        <div class="cc-lbl">DISTRIBUTIE RISC — TOTAL</div>
+        <div class="donut-cw">
+          <canvas id="dc"></canvas>
+          <div class="donut-center">
+            <span class="donut-n" id="dTotal">0</span>
+            <span class="donut-sub">COMENZI</span>
+          </div>
+        </div>
+        <div class="donut-leg" id="dLeg"></div>
+      </div>
     </div>
-    <button class="btn" id="refreshBtn" onclick="fetchData()">Refresh</button>
   </div>
-</div>
 
-<div class="container">
-  <div class="stats-row" id="statsRow"></div>
-  
-  <div class="charts-row">
-    <div class="chart-card">
-      <div class="chart-title">SCOR RISK PE COMENZI</div>
-      <div style="position:relative;height:160px"><canvas id="lineChart"></canvas></div>
+  <!-- ORDERS -->
+  <div id="v-orders" style="display:none">
+    <div style="height:4px"></div>
+    <div class="tbl-wrap">
+      <div class="thead orders-cols">
+        <div class="th sort on" id="th-score"  onclick="setSort('score_total')">SCOR</div>
+        <div class="th">RISC</div>
+        <div class="th sort" id="th-date"   onclick="setSort('scored_at')">COMANDA</div>
+        <div class="th sort" id="th-val"    onclick="setSort('order_value')">VALOARE</div>
+        <div class="th">DATA / ORA</div>
+        <div class="th">STATUS</div>
+      </div>
+      <div id="oBody"></div>
     </div>
-    <div class="chart-card">
-      <div class="chart-title">DISTRIBUTIE RISC</div>
-      <div style="position:relative;height:160px"><canvas id="pieChart"></canvas></div>
-      <div class="pie-legend" id="pieLegend"></div>
-    </div>
+    <div class="pager" id="pgr"></div>
   </div>
-  
-  <div class="tabs">
-    <button class="tab active" id="tabOrders" onclick="switchTab('orders')">Comenzi</button>
-    <button class="tab" id="tabReputation" onclick="switchTab('reputation')">Reputatie retea</button>
-  </div>
-  
-  <div id="ordersTable"></div>
-  <div id="reputationTable" style="display:none;"></div>
-</div>
 
-<div id="panelOverlay" class="panel-overlay" style="display:none;" onclick="closePanel()"></div>
-<div id="panel" class="panel" style="display:none;"></div>
+  <!-- NETWORK -->
+  <div id="v-network" style="display:none">
+    <div style="height:4px"></div>
+    <div class="tbl-wrap">
+      <div class="thead net-cols">
+        <div class="th">HASH (TRUNCHIAT)</div>
+        <div class="th">TIP</div>
+        <div class="th">COMENZI</div>
+        <div class="th">REFUZURI</div>
+        <div class="th">RATA</div>
+        <div class="th">ULTIMA ACTIVITATE</div>
+      </div>
+      <div id="nBody"></div>
+    </div>
+  </div>
+</main>
+
+<div id="ov" onclick="closePanel()"></div>
+<aside id="panel"><div class="pi-wrap" id="pInner"></div></aside>
 
 <script>
-const SUPABASE_URL = "https://hoyhptnrdhhpsybpvnab.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhveWhwdG5yZGhocHN5YnB2bmFiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjgwNDYxMiwiZXhwIjoyMDg4MzgwNjEyfQ.gt3qMyfqv4Ycu8eu3T2ia4TIFAS5NGXE7qzrtIATE0s";
+const SB   = 'https://hoyhptnrdhhpsybpvnab.supabase.co';
+const KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhveWhwdG5yZGhocHN5YnB2bmFiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjgwNDYxMiwiZXhwIjoyMDg4MzgwNjEyfQ.gt3qMyfqv4Ycu8eu3T2ia4TIFAS5NGXE7qzrtIATE0s';
+const MID  = '3a43c66f-d037-4ada-b86b-1688982391a4';
+const PAGE = 20;
 
-const BUCKET = {
-  Low: { bg: "#0D2818", border: "#22C55E", text: "#4ADE80", dot: "#22C55E" },
-  Medium: { bg: "#1C1608", border: "#EAB308", text: "#FACC15", dot: "#EAB308" },
-  High: { bg: "#1C0808", border: "#EF4444", text: "#F87171", dot: "#EF4444" },
-  Critical: { bg: "#2D0A0A", border: "#DC2626", text: "#FCA5A5", dot: "#DC2626" },
+const R = {
+  Low:      { c: '#22c55e', dim: 'rgba(34,197,94,.12)',  bdr: 'rgba(34,197,94,.3)'  },
+  Medium:   { c: '#f59e0b', dim: 'rgba(245,158,11,.12)', bdr: 'rgba(245,158,11,.3)' },
+  High:     { c: '#f97316', dim: 'rgba(249,115,22,.12)', bdr: 'rgba(249,115,22,.3)' },
+  Critical: { c: '#ef4444', dim: 'rgba(239,68,68,.12)',  bdr: 'rgba(239,68,68,.3)'  },
 };
+const CAT = {
+  client:    '#3b82f6',
+  order:     '#a855f7',
+  behaviour: '#f59e0b',
+  geo:       '#06b6d4',
+  product:   '#ec4899',
+};
+function rc(b) { return R[b] || R.Low; }
 
-let orders = [], hashes = [], lineChart = null, pieChart = null, selectedOrder = null;
+let orders = [], hashes = [], sortF = 'scored_at', page = 1;
+let lChart = null, dChart = null;
 
-async function supaQ(table, params = "") {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+// ─── API ────────────────────────────────────────────────────
+async function q(table, qs) {
+  const r = await fetch(`${SB}/rest/v1/${table}?${qs}`, {
+    headers: { apikey: KEY, Authorization: `Bearer ${KEY}` }
   });
   return r.json();
 }
 
-async function fetchData() {
-  document.getElementById("refreshBtn").textContent = "...";
+// ─── Load ────────────────────────────────────────────────────
+async function loadAll() {
+  const btn = document.getElementById('refBtn');
+  btn.disabled = true; btn.textContent = '...';
+  document.getElementById('ldr').style.display = 'block';
   try {
+    const fields = 'id,external_order_id,score_total,risk_bucket,recommended_action,rules_triggered,final_status,scored_at,order_value,ip_country,delivery_zone_remote,customer_orders_lifetime,customer_refusals_lifetime,phone_hash';
     [orders, hashes] = await Promise.all([
-      supaQ("orders", "select=*&order=scored_at.desc&limit=100"),
-      supaQ("customer_hashes", "select=*&order=last_seen.desc&limit=50"),
+      q('orders', `merchant_id=eq.${MID}&select=${fields}&order=scored_at.desc&limit=500`),
+      q('customer_hashes', 'select=*&order=total_refusals_network.desc&limit=200'),
     ]);
-  } catch (e) { console.error(e); }
-  document.getElementById("refreshBtn").textContent = "Refresh";
-  render();
+    if (!Array.isArray(orders)) orders = [];
+    if (!Array.isArray(hashes)) hashes = [];
+    document.getElementById('upd').textContent = new Date().toLocaleTimeString('ro-RO');
+    render();
+  } catch(e) { console.error(e); }
+  btn.disabled = false; btn.textContent = '↺ REFRESH';
+  document.getElementById('ldr').style.display = 'none';
 }
 
-function miniRingSVG(score, bucket, size = 36) {
-  const c = BUCKET[bucket] || BUCKET.Low;
-  const r = (size - 6) / 2, circ = 2 * Math.PI * r, pct = Math.min(score / 130, 1);
-  return `<svg width="${size}" height="${size}" style="transform:rotate(-90deg)">
-    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#1a1a2e" stroke-width="3"/>
-    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${c.dot}" stroke-width="3"
-      stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-pct)}"/>
-  </svg>`;
-}
-
+// ─── Render all ─────────────────────────────────────────────
 function render() {
-  const total = orders.length;
-  const avg = total > 0 ? Math.round(orders.reduce((s, o) => s + o.score_total, 0) / total) : 0;
-  const bc = { Low: 0, Medium: 0, High: 0, Critical: 0 };
-  orders.forEach(o => { if (bc[o.risk_bucket] !== undefined) bc[o.risk_bucket]++; });
-  const hrPct = total > 0 ? Math.round(((bc.High + bc.Critical) / total) * 100) : 0;
-  const val = orders.reduce((s, o) => s + Number(o.order_value), 0);
-  const avgColor = avg > 69 ? "#F87171" : avg > 39 ? "#FACC15" : "#4ADE80";
-
-  document.getElementById("statsRow").innerHTML = `
-    <div class="stat-card"><div class="stat-label">Total comenzi</div><div class="stat-value">${total}</div></div>
-    <div class="stat-card"><div class="stat-label">Scor mediu</div><div class="stat-value" style="color:${avgColor}">${avg}</div></div>
-    <div class="stat-card"><div class="stat-label">Risc ridicat</div><div class="stat-value" style="color:#F87171">${hrPct}%</div><div class="stat-sub">${bc.High+bc.Critical} comenzi</div></div>
-    <div class="stat-card"><div class="stat-label">Valoare totala</div><div class="stat-value">${Math.round(val/1000)}k</div><div class="stat-sub">RON</div></div>
-  `;
-
-  renderLineChart([...orders].reverse());
-  renderPieChart(bc);
+  renderStats();
+  renderLine();
+  renderDonut();
   renderOrders();
-  renderHashes();
+  renderNetwork();
 }
 
-function renderLineChart(data) {
-  const ctx = document.getElementById("lineChart").getContext("2d");
-  if (lineChart) lineChart.destroy();
-  lineChart = new Chart(ctx, {
-    type: "line",
+// ─── Stats ──────────────────────────────────────────────────
+function renderStats() {
+  const midnight = new Date(); midnight.setHours(0,0,0,0);
+  const today = orders.filter(o => new Date(o.scored_at) >= midnight);
+  const n = today.length;
+  const avg = n > 0 ? Math.round(today.reduce((s,o) => s + o.score_total, 0) / n) : 0;
+  const cnt = { Low:0, Medium:0, High:0, Critical:0 };
+  today.forEach(o => { if (cnt[o.risk_bucket] !== undefined) cnt[o.risk_bucket]++; });
+  const avgC = avg >= 75 ? R.Critical.c : avg >= 50 ? R.High.c : avg >= 25 ? R.Medium.c : R.Low.c;
+  const pct = k => n > 0 ? Math.round(cnt[k]/n*100) : 0;
+
+  document.getElementById('statsGrid').innerHTML = [
+    { lbl:'COMENZI AZI',  val: n,          sub: 'ordine procesate',   col: '' },
+    { lbl:'SCOR MEDIU',   val: avg,         sub: 'risc mediu azi',     col: avgC },
+    { lbl:'LOW',          val: cnt.Low,     sub: pct('Low')+'% azi',   col: R.Low.c },
+    { lbl:'MEDIUM',       val: cnt.Medium,  sub: pct('Medium')+'% azi',col: R.Medium.c },
+    { lbl:'HIGH',         val: cnt.High,    sub: pct('High')+'% azi',  col: R.High.c },
+    { lbl:'CRITICAL',     val: cnt.Critical,sub: pct('Critical')+'% azi',col: R.Critical.c },
+  ].map(x => `<div class="sc">
+    <div class="sc-lbl">${x.lbl}</div>
+    <div class="sc-val" style="color:${x.col||'#e2e2e2'}">${x.val}</div>
+    <div class="sc-sub">${x.sub}</div>
+  </div>`).join('');
+}
+
+// ─── Line chart ──────────────────────────────────────────────
+function renderLine() {
+  const ctx = document.getElementById('lc').getContext('2d');
+  if (lChart) lChart.destroy();
+
+  const days = [], now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  const map = {}; days.forEach(d => map[d] = []);
+  orders.forEach(o => { const d = o.scored_at.slice(0,10); if (map[d]) map[d].push(o.score_total); });
+  const labels = days.map(d => d.slice(5).replace('-','.'));
+  const data   = days.map(d => map[d].length ? Math.round(map[d].reduce((a,b)=>a+b,0)/map[d].length) : null);
+
+  // Threshold plugin
+  const thr = {
+    id: 'thr',
+    afterDraw(chart) {
+      const {ctx: c, chartArea: a, scales: s} = chart;
+      [{y:25,col:'rgba(245,158,11,.2)'},{y:50,col:'rgba(249,115,22,.2)'},{y:75,col:'rgba(239,68,68,.2)'}].forEach(t => {
+        const yp = s.y.getPixelForValue(t.y);
+        c.save(); c.strokeStyle = t.col; c.lineWidth = 1; c.setLineDash([4,4]);
+        c.beginPath(); c.moveTo(a.left, yp); c.lineTo(a.right, yp); c.stroke(); c.restore();
+      });
+    }
+  };
+
+  lChart = new Chart(ctx, {
+    type: 'line',
+    plugins: [thr],
     data: {
-      labels: data.map((_, i) => i + 1),
+      labels,
       datasets: [{
-        data: data.map(o => o.score_total),
-        borderColor: "#22C55E", borderWidth: 2, pointRadius: 0,
-        tension: 0.3, fill: false,
+        data, borderColor: '#22c55e', borderWidth: 2,
+        pointRadius: 4, pointBackgroundColor: '#22c55e',
+        pointBorderColor: '#0a0a0a', pointBorderWidth: 2,
+        tension: 0.25, fill: true,
+        backgroundColor: 'rgba(34,197,94,.04)', spanGaps: true,
       }],
     },
     options: {
-      responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#141414', borderColor: '#2a2a2a', borderWidth: 1,
+          titleColor: '#666', bodyColor: '#e2e2e2',
+          bodyFont: { family: 'Fira Code', size: 13 },
+          callbacks: { label: c => ` scor mediu: ${c.raw ?? '—'}` },
+        },
+      },
       scales: {
-        x: { grid: { color: "#1a1a2e" }, ticks: { color: "#333", font: { size: 10 } } },
-        y: { min: 0, max: 130, grid: { color: "#1a1a2e" }, ticks: { color: "#333", font: { size: 10 } } },
+        x: { grid: { color: '#1a1a1a' }, ticks: { color: '#444', font: { family: 'Fira Code', size: 10 } } },
+        y: { min: 0, max: 100, grid: { color: '#1a1a1a' },
+             ticks: { color: '#444', font: { family: 'Fira Code', size: 10 }, stepSize: 25 } },
       },
     },
   });
 }
 
-function renderPieChart(bc) {
-  const ctx = document.getElementById("pieChart").getContext("2d");
-  if (pieChart) pieChart.destroy();
-  const entries = Object.entries(bc).filter(([, v]) => v > 0);
-  pieChart = new Chart(ctx, {
-    type: "doughnut",
+// ─── Donut ───────────────────────────────────────────────────
+function renderDonut() {
+  const ctx = document.getElementById('dc').getContext('2d');
+  if (dChart) dChart.destroy();
+  const cnt = { Low:0, Medium:0, High:0, Critical:0 };
+  orders.forEach(o => { if (cnt[o.risk_bucket]!==undefined) cnt[o.risk_bucket]++; });
+  const total = orders.length;
+  document.getElementById('dTotal').textContent = total;
+  const entries = Object.entries(cnt);
+  const hasData = entries.some(([,v]) => v > 0);
+
+  dChart = new Chart(ctx, {
+    type: 'doughnut',
     data: {
       labels: entries.map(([k]) => k),
       datasets: [{
-        data: entries.map(([, v]) => v),
-        backgroundColor: entries.map(([k]) => BUCKET[k].dot),
+        data: hasData ? entries.map(([,v]) => v) : [1],
+        backgroundColor: hasData ? entries.map(([k]) => R[k].c) : ['#1e1e1e'],
         borderWidth: 0, spacing: 3,
       }],
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      cutout: "60%",
-      plugins: { legend: { display: false } },
+      responsive: true, maintainAspectRatio: true, cutout: '65%',
+      plugins: { legend: { display: false }, tooltip: { enabled: hasData } },
     },
   });
-  document.getElementById("pieLegend").innerHTML = Object.entries(bc).map(([b, c]) =>
-    `<div class="pie-legend-item"><div class="pie-legend-dot" style="background:${BUCKET[b].dot}"></div><span class="pie-legend-label">${b}: ${c}</span></div>`
-  ).join("");
+
+  document.getElementById('dLeg').innerHTML = entries.map(([b,c]) => `
+    <div class="dl-item">
+      <div class="dl-dot" style="background:${R[b].c}"></div>
+      <span class="dl-name">${b}</span>
+      <span class="dl-cnt">${c}</span>
+    </div>`).join('');
+}
+
+// ─── Orders ──────────────────────────────────────────────────
+function sorted() {
+  const a = [...orders];
+  if (sortF === 'score_total')  a.sort((x,y) => y.score_total - x.score_total);
+  else if (sortF === 'order_value') a.sort((x,y) => Number(y.order_value) - Number(x.order_value));
+  else a.sort((x,y) => new Date(y.scored_at) - new Date(x.scored_at));
+  return a;
 }
 
 function renderOrders() {
-  if (orders.length === 0) {
-    document.getElementById("ordersTable").innerHTML = `<div class="table-wrap"><div class="empty">Nicio comanda inca</div></div>`;
+  const arr   = sorted();
+  const total = arr.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE));
+  if (page > pages) page = pages;
+  const slice = arr.slice((page-1)*PAGE, page*PAGE);
+
+  // Update header sort indicators
+  ['score','date','val'].forEach(k => {
+    const el = document.getElementById('th-'+k);
+    if (!el) return;
+    const f = k==='score'?'score_total':k==='date'?'scored_at':'order_value';
+    el.className = 'th sort' + (sortF===f?' on':'');
+    el.textContent = {score:'SCOR',date:'COMANDA',val:'VALOARE'}[k] + (sortF===f?' ↓':'');
+  });
+
+  if (!total) {
+    document.getElementById('oBody').innerHTML = '<div class="empty">— NICIO COMANDA —</div>';
+    document.getElementById('pgr').innerHTML = '';
     return;
   }
-  const header = `<div class="table-header order-grid"><span></span><span>Comanda</span><span>Valoare</span><span>Scor</span><span>Risc</span><span>Status</span></div>`;
-  const rows = orders.map((o, i) => {
-    const c = BUCKET[o.risk_bucket] || BUCKET.Low;
-    const t = new Date(o.scored_at).toLocaleString("ro-RO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-    const statusColor = o.final_status === "delivered" ? "#4ADE80" : o.final_status === "refused" ? "#F87171" : "#555";
-    const statusBg = o.final_status === "delivered" ? "#22C55E15" : o.final_status === "refused" ? "#EF444415" : "#ffffff08";
-    const statusBorder = o.final_status === "delivered" ? "#22C55E30" : o.final_status === "refused" ? "#EF444430" : "#ffffff10";
-    return `<div class="order-row" onclick="openPanel(${i})">
-      <div style="display:flex;justify-content:center">${miniRingSVG(o.score_total, o.risk_bucket)}</div>
-      <div><div style="font-size:13px;color:#ccc">#${(o.external_order_id||"").slice(-6)||"—"}</div><div style="font-size:11px;color:#555">${t}</div></div>
-      <div class="mono" style="font-size:13px;color:#ccc">${Number(o.order_value).toLocaleString()} RON</div>
-      <div class="mono" style="font-size:12px;font-weight:600;color:${c.text}">${o.score_total}</div>
-      <div><span class="bucket-badge" style="background:${c.border}15;border:1px solid ${c.border}30;color:${c.text}">${o.risk_bucket}</span></div>
-      <div><span class="status-badge" style="background:${statusBg};border:1px solid ${statusBorder};color:${statusColor}">${o.final_status||"pending"}</span></div>
+
+  const SC = {
+    delivered: { c:'#22c55e', bg:'rgba(34,197,94,.1)',  b:'rgba(34,197,94,.25)'  },
+    refused:   { c:'#ef4444', bg:'rgba(239,68,68,.1)',  b:'rgba(239,68,68,.25)'  },
+    cancelled: { c:'#f97316', bg:'rgba(249,115,22,.1)', b:'rgba(249,115,22,.25)' },
+    pending:   { c:'#555',    bg:'rgba(80,80,80,.1)',   b:'rgba(80,80,80,.2)'    },
+  };
+
+  const globalOffset = (page-1)*PAGE;
+  document.getElementById('oBody').innerHTML = slice.map((o, i) => {
+    const ri = rc(o.risk_bucket);
+    const sc = SC[o.final_status] || SC.pending;
+    const dt = new Date(o.scored_at);
+    const ds = dt.toLocaleDateString('ro-RO', { day:'2-digit', month:'short' });
+    const ts = dt.toLocaleTimeString('ro-RO', { hour:'2-digit', minute:'2-digit' });
+    const eid = (o.external_order_id||'').slice(-8) || o.id.slice(0,8);
+    return `<div class="orow" onclick="openPanel(${globalOffset+i})">
+      <div class="score-n" style="color:${ri.c}">${o.score_total}</div>
+      <div class="td">
+        <span class="rbadge" style="background:${ri.dim};border:1px solid ${ri.bdr};color:${ri.c}">${o.risk_bucket}</span>
+      </div>
+      <div class="td">
+        <div class="oid">#${eid}</div>
+      </div>
+      <div class="td"><span class="oval">${Number(o.order_value||0).toLocaleString('ro-RO')} RON</span></div>
+      <div class="td"><div class="otime">${ds}</div><div class="otime">${ts}</div></div>
+      <div class="td">
+        <span class="sbadge" style="background:${sc.bg};border:1px solid ${sc.b};color:${sc.c}">${o.final_status||'pending'}</span>
+      </div>
     </div>`;
-  }).join("");
-  document.getElementById("ordersTable").innerHTML = `<div class="table-wrap">${header}${rows}</div>`;
+  }).join('');
+
+  const start = (page-1)*PAGE + 1;
+  document.getElementById('pgr').innerHTML = `
+    <span class="pi">${start}–${Math.min(page*PAGE,total)} din ${total}</span>
+    <div class="pbtns">
+      <button class="pbtn" onclick="goPage(${page-1})" ${page<=1?'disabled':''}>← PREV</button>
+      <button class="pbtn" onclick="goPage(${page+1})" ${page>=pages?'disabled':''}>NEXT →</button>
+    </div>`;
 }
 
-function renderHashes() {
-  if (hashes.length === 0) {
-    document.getElementById("reputationTable").innerHTML = `<div class="table-wrap"><div class="empty">Nicio intrare</div></div>`;
+function setSort(f) { sortF = f; page = 1; renderOrders(); }
+function goPage(p)  { page = p; renderOrders(); document.getElementById('v-orders').scrollIntoView({behavior:'smooth'}); }
+
+// ─── Network ─────────────────────────────────────────────────
+function renderNetwork() {
+  if (!hashes.length) {
+    document.getElementById('nBody').innerHTML = '<div class="empty">— NICIO INTRARE —</div>';
     return;
   }
-  const header = `<div class="table-header hash-grid"><span>Hash (truncat)</span><span>Comenzi</span><span>Refuzuri</span><span>Rata</span><span>Ultima activitate</span></div>`;
-  const rows = hashes.map(h => {
+  document.getElementById('nBody').innerHTML = hashes.map(h => {
     const rate = h.total_orders_network > 0 ? h.total_refusals_network / h.total_orders_network : 0;
-    const rc = rate >= 0.5 ? "#F87171" : rate >= 0.2 ? "#FACC15" : "#4ADE80";
-    const t = new Date(h.last_seen).toLocaleString("ro-RO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-    return `<div class="hash-row">
-      <div class="mono" style="font-size:12px;color:#777">${(h.hash_value||"").slice(0,16)}...</div>
-      <div class="mono" style="font-size:13px;color:#ccc">${h.total_orders_network}</div>
-      <div class="mono" style="font-size:13px;color:${h.total_refusals_network>0?"#F87171":"#4ADE80"}">${h.total_refusals_network}</div>
-      <div class="mono" style="font-size:13px;color:${rc}">${(rate*100).toFixed(0)}%</div>
-      <div style="font-size:11px;color:#555">${t}</div>
+    const ri   = rate >= .5 ? R.Critical : rate >= .2 ? R.Medium : R.Low;
+    const t    = h.last_seen ? new Date(h.last_seen).toLocaleDateString('ro-RO',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+    return `<div class="nrow">
+      <div class="td"><span class="mono" style="font-size:11px;color:#555">${(h.hash_value||'').slice(0,22)}…</span></div>
+      <div class="td"><span style="font-size:10px;color:#666;letter-spacing:1px;text-transform:uppercase">${h.hash_type||'—'}</span></div>
+      <div class="td"><span class="mono" style="font-size:13px;color:#e2e2e2">${h.total_orders_network}</span></div>
+      <div class="td"><span class="mono" style="font-size:13px;color:${h.total_refusals_network>0?'#ef4444':'#555'}">${h.total_refusals_network}</span></div>
+      <div class="td"><span class="rbadge" style="font-size:10px;background:${ri.dim};border:1px solid ${ri.bdr};color:${ri.c}">${(rate*100).toFixed(0)}%</span></div>
+      <div class="td"><span style="font-size:11px;color:#555">${t}</span></div>
     </div>`;
-  }).join("");
-  document.getElementById("reputationTable").innerHTML = `<div class="table-wrap">${header}${rows}</div>`;
+  }).join('');
 }
 
-function switchTab(tab) {
-  document.getElementById("tabOrders").className = tab === "orders" ? "tab active" : "tab";
-  document.getElementById("tabReputation").className = tab === "reputation" ? "tab active" : "tab";
-  document.getElementById("ordersTable").style.display = tab === "orders" ? "" : "none";
-  document.getElementById("reputationTable").style.display = tab === "reputation" ? "" : "none";
-}
-
+// ─── Panel ───────────────────────────────────────────────────
 function openPanel(idx) {
-  selectedOrder = orders[idx];
-  const o = selectedOrder;
-  const c = BUCKET[o.risk_bucket] || BUCKET.Low;
-  const rules = typeof o.rules_triggered === "string" ? JSON.parse(o.rules_triggered) : o.rules_triggered || [];
-  const cats = [
-    { label: "Client", score: o.score_client, max: 40 },
-    { label: "Comanda", score: o.score_order, max: 35 },
-    { label: "Comportament", score: o.score_behaviour, max: 35 },
-    { label: "Geo", score: o.score_geo, max: 20 },
-    { label: "Produs", score: o.score_product, max: 20 },
-  ];
-  const catHTML = cats.map(ct => {
-    const pct = ct.max > 0 ? (ct.score / ct.max) * 100 : 0;
-    const barColor = pct >= 80 ? "#EF4444" : pct >= 50 ? "#EAB308" : "#22C55E";
-    return `<div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:12px;color:#777">${ct.label}</span>
-        <span class="mono" style="font-size:12px;color:#ccc">${ct.score}/${ct.max}</span>
-      </div>
-      <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
-    </div>`;
-  }).join("");
-  const rulesHTML = rules.map(r =>
-    `<div class="rule-row" style="background:${r.pts<0?"#0D281810":"#1a0a0a10"};border:1px solid ${r.pts<0?"#22C55E15":"#EF444415"}">
-      <span style="font-size:12px;color:#999">${r.id.replace(/_/g," ")}</span>
-      <span class="mono" style="font-size:12px;font-weight:600;color:${r.pts<0?"#4ADE80":"#F87171"}">${r.pts>0?"+":""}${r.pts}</span>
-    </div>`
-  ).join("");
-  const dataRows = [
-    ["Valoare", `${Number(o.order_value).toLocaleString()} RON`],
-    ["Produse", o.items_count],
-    ["Ora", `${o.hour_of_day}:00`],
-    ["IP Tara", o.ip_country],
-    ["Distanta IP-livrare", `${o.ip_to_delivery_distance_km} km`],
-    ["Discount", `${(Number(o.discount_percent)*100).toFixed(0)}%`],
-    ["Comenzi client", o.customer_orders_lifetime],
-    ["Refuzuri (90d)", o.customer_refusals_90d],
-    ["Refuzuri (total)", o.customer_refusals_lifetime],
-  ].map(([k,v]) => `<div class="data-row"><span style="font-size:12px;color:#666">${k}</span><span class="mono" style="font-size:12px;color:#ccc">${v}</span></div>`).join("");
+  const arr = sorted();
+  const o   = arr[idx]; if (!o) return;
+  const ri  = rc(o.risk_bucket);
 
-  document.getElementById("panel").innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-      <span class="mono" style="font-size:11px;color:#555;letter-spacing:1.5px">ORDER #${(o.external_order_id||"").slice(-6)||"—"}</span>
-      <button class="btn" onclick="closePanel()">✕</button>
+  const rules = (() => {
+    try { return Array.isArray(o.rules_triggered) ? o.rules_triggered : JSON.parse(o.rules_triggered||'[]'); }
+    catch { return []; }
+  })();
+
+  const refRate = o.customer_orders_lifetime > 0
+    ? ((o.customer_refusals_lifetime / o.customer_orders_lifetime)*100).toFixed(0)+'%'
+    : '—';
+
+  const rulesHTML = rules.length
+    ? `<div class="rtags">${rules.map(r => {
+        const cc = CAT[r.cat] || '#888';
+        return `<div class="rtag" style="border-color:${cc}33;background:${cc}0d;color:${cc}">
+          <span>${(r.id||'').replace(/_/g,' ')}</span>
+          <span class="rtag-pts" style="color:${r.pts<0?'#22c55e':'#ef4444'}">${r.pts>0?'+':''}${r.pts}</span>
+        </div>`;
+      }).join('')}</div>`
+    : '<span style="font-family:Fira Code,monospace;font-size:11px;color:#333">— nicio regula —</span>';
+
+  const fields = [
+    ['VALOARE',       `${Number(o.order_value||0).toLocaleString('ro-RO')} RON`],
+    ['IP TARA',       o.ip_country||'—'],
+    ['COMENZI CLIENT',o.customer_orders_lifetime??'—'],
+    ['REFUZURI',      o.customer_refusals_lifetime??'—'],
+    ['RATA REFUZ',    refRate],
+    ['ZONA REMOTE',   o.delivery_zone_remote?'DA':'NU'],
+    ['STATUS FINAL',  o.final_status||'pending'],
+    ['PHONE HASH',    (o.phone_hash||'—').slice(0,14)+(o.phone_hash?'…':'')],
+  ];
+
+  const t = new Date(o.scored_at).toLocaleString('ro-RO',{dateStyle:'medium',timeStyle:'short'});
+  const eid = (o.external_order_id||'').slice(-8) || o.id.slice(0,8);
+
+  document.getElementById('pInner').innerHTML = `
+    <div class="ph">
+      <span class="pid">ORDER #${eid}</span>
+      <button class="pclose" onclick="closePanel()">✕</button>
     </div>
-    <div style="padding:20px;border-radius:12px;margin-bottom:20px;background:${c.bg};border:1px solid ${c.border}25">
-      <div style="display:flex;align-items:center;gap:16px">
-        ${miniRingSVG(o.score_total, o.risk_bucket, 56)}
-        <div>
-          <div class="mono" style="font-size:32px;font-weight:700;color:${c.text}">${o.score_total}</div>
-          <div class="mono" style="font-size:12px;color:${c.text};opacity:0.7">${o.risk_bucket} Risk</div>
-        </div>
-      </div>
-      <div style="margin-top:12px;font-size:13px;color:#999;line-height:1.5">${o.recommended_action}</div>
+    <div class="shero" style="background:${ri.dim};border-color:${ri.bdr}">
+      <div class="shero-n" style="color:${ri.c}">${o.score_total}</div>
+      <div class="shero-bkt" style="color:${ri.c}">${o.risk_bucket.toUpperCase()} RISK</div>
+      <div class="shero-act" style="border-color:${ri.bdr}">${o.recommended_action||'—'}</div>
     </div>
-    <div style="margin-bottom:20px">
-      <div class="mono" style="font-size:11px;color:#555;letter-spacing:1.5px;margin-bottom:12px">CATEGORII</div>
-      ${catHTML}
-    </div>
-    <div style="margin-bottom:20px">
-      <div class="mono" style="font-size:11px;color:#555;letter-spacing:1.5px;margin-bottom:12px">REGULI DECLANSATE (${rules.length})</div>
+    <div class="psec">
+      <div class="psec-t">REGULI DECLANSATE (${rules.length})</div>
       ${rulesHTML}
     </div>
-    <div>
-      <div class="mono" style="font-size:11px;color:#555;letter-spacing:1.5px;margin-bottom:12px">DATE COMANDA</div>
-      ${dataRows}
-    </div>
-  `;
-  document.getElementById("panel").style.display = "";
-  document.getElementById("panelOverlay").style.display = "";
+    <div class="psec">
+      <div class="psec-t">DATE COMANDA</div>
+      <div class="dgrid">${fields.map(([l,v])=>`
+        <div class="di"><div class="di-lbl">${l}</div><div class="di-val">${v}</div></div>`
+      ).join('')}</div>
+      <div style="margin-top:8px;font-family:Fira Code,monospace;font-size:10px;color:#333">EVALUAT ${t}</div>
+    </div>`;
+
+  document.getElementById('ov').style.display = 'block';
+  const p = document.getElementById('panel');
+  p.style.display = 'block'; // ensure visible before transform
+  requestAnimationFrame(() => p.classList.add('open'));
 }
 
 function closePanel() {
-  document.getElementById("panel").style.display = "none";
-  document.getElementById("panelOverlay").style.display = "none";
-  selectedOrder = null;
+  document.getElementById('panel').classList.remove('open');
+  document.getElementById('ov').style.display = 'none';
 }
 
-fetchData();
+// ─── Tabs ────────────────────────────────────────────────────
+function tab(t) {
+  ['dash','orders','network'].forEach(k => {
+    document.getElementById('v-'+k).style.display   = k===t ? '' : 'none';
+    document.getElementById('nt-'+k).className      = k===t ? 'ntab on' : 'ntab';
+  });
+}
+
+// ─── Keyboard ────────────────────────────────────────────────
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+
+// ─── Init ────────────────────────────────────────────────────
+loadAll();
 </script>
 </body>
 </html>
+
